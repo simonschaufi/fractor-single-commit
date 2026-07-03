@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Create single commits for all rector rules
+# Create single commits for all fractor rules
 # Needs:
 # - git
 # - jq
-# - rector (in vendor/bin or RECTOR_PATH)
+# - fractor (in vendor/bin or FRACTOR_PATH)
 
 set -e
 
@@ -24,7 +24,7 @@ commitMessagePrefix="[TASK] "
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
-            echo "rector-single-commit.sh [options] [commit message prefix]"
+            echo "fractor-single-commit.sh [options] [commit message prefix]"
             echo "Options:"
             echo "  -h, --help     Show help"
             echo "  -n, --dry-run  Show changes without committing"
@@ -43,14 +43,10 @@ done
 
 commitMessagePrefix="${1:-[TASK] }"
 
-messagesDirName="rector-messages"
+messagesDirName="fractor-messages"
 messagesDir="$(pwd)/$messagesDirName"
-rectorPath=${RECTOR_PATH:-./vendor/bin/rector}
-rectorConfigPath=${RECTOR_CONFIG_PATH:-./rector.php}
-ecsPath=${ECS_PATH:-./vendor/bin/ecs}
-ecsConfigPath=${ECS_CONFIG_PATH:-./ecs.php}
-phpCsFixerPath=${PHP_CS_FIXER_PATH:-./vendor/bin/php-cs-fixer}
-phpCsFixerConfigPath=${PHP_CS_FIXER_CONFIG_PATH:-./.php-cs-fixer.dist.php}
+fractorPath=${FRACTOR_PATH:-./vendor/bin/fractor}
+fractorConfigPath=${FRACTOR_CONFIG_PATH:-./fractor.php}
 stashedChanges=false
 stashedRef=""
 
@@ -62,36 +58,15 @@ validate_exec() {
     fi
 }
 
-validate_exec "$rectorPath"
-
-formatter="ecs"
-if [ -x "$ecsPath" ]; then
-    formatterPath="$ecsPath"
-elif [ -x "$phpCsFixerPath" ]; then
-    formatter="php-cs-fixer"
-    formatterPath="$phpCsFixerPath"
-else
-    echo -e "${RED}Neither ECS nor PHP CS Fixer executable found${NC}" >&2
-    exit 1
-fi
+validate_exec "$fractorPath"
 
 if ! command -v jq > /dev/null 2>&1; then
     echo -e "${RED}jq executable not found${NC}" >&2
     exit 1
 fi
 
-if [ ! -f "$rectorConfigPath" ]; then
-    echo -e "${RED}Rector configuration file missing: $rectorConfigPath${NC}" >&2
-    exit 1
-fi
-
-if [ "$formatter" = "ecs" ]; then
-    if [ ! -f "$ecsConfigPath" ]; then
-        echo -e "${RED}ECS configuration file missing: $ecsConfigPath${NC}" >&2
-        exit 1
-    fi
-elif [ ! -f "$phpCsFixerConfigPath" ]; then
-    echo -e "${RED}PHP CS Fixer configuration file missing: $phpCsFixerConfigPath${NC}" >&2
+if [ ! -f "$fractorConfigPath" ]; then
+    echo -e "${RED}Fractor configuration file missing: $fractorConfigPath${NC}" >&2
     exit 1
 fi
 
@@ -160,8 +135,8 @@ ensure_messages_dir() {
         exit 1
     fi
 
-    echo -e "${CYAN}Cloning rector commit messages repository...${NC}"
-    git clone git@github.com:simonschaufi/rector-messages.git "$messagesDir" --quiet
+    echo -e "${CYAN}Cloning fractor commit messages repository...${NC}"
+    git clone git@github.com:simonschaufi/fractor-messages.git "$messagesDir" --quiet
 
     gitExcludeFile=$(git rev-parse --git-path info/exclude)
     touch "$gitExcludeFile"
@@ -179,7 +154,7 @@ if ! git diff-index --quiet HEAD --; then
         exit 2
     fi
 
-    stashMessage="rector-single-commit-$(date +%s)-$$"
+    stashMessage="fractor-single-commit-$(date +%s)-$$"
     git stash push --include-untracked --message "$stashMessage" > /dev/null
     stashedRef="stash@{0}"
 
@@ -193,7 +168,7 @@ if ! git diff-index --quiet HEAD --; then
 fi
 
 # Convert rule name to file path (backslashes become directory separators)
-# e.g., Rector\CodeQuality\Rector\BooleanAnd\SomeRector -> Rector/CodeQuality/Rector/BooleanAnd/SomeRector.txt
+# e.g., Fractor\CodeQuality\Fractor\BooleanAnd\SomeFractor -> Fractor/CodeQuality/Fractor/BooleanAnd/SomeFractor.txt
 rule_to_filepath() {
     local rule="$1"
     echo "$messagesDir/$(echo "$rule" | tr '\\' '/').txt"
@@ -202,7 +177,7 @@ rule_to_filepath() {
 # Get info URL for a rule
 get_rule_info_url() {
     local rule="$1"
-    if [[ "$rule" == Rector* ]]; then
+    if [[ "$rule" == Fractor* ]]; then
         echo "https://getrector.com/find-rule?query=$(echo "$rule" | sed 's/^.*\\//')"
     fi
 }
@@ -383,7 +358,7 @@ print_separator() {
 }
 
 # Usage
-#print_success "Rector is done"
+#print_success "Fractor is done"
 #print_error "Something went wrong"
 #print_warning "This might cause issues"
 #print_note "Remember to commit your changes"
@@ -393,11 +368,11 @@ print_separator() {
 # Or use the generic function directly
 #print_block "success" "Custom message here"
 
-print_warning "Running Rector analysis... This may take a while."
+print_warning "Running Fractor analysis... This may take a while."
 
 # Get rules into an array
-mapfile -t rulesArray < <("$rectorPath" process --config "$rectorConfigPath" --dry-run --clear-cache --output-format=json \
-    | jq -r '.file_diffs[]?.applied_rectors[]' \
+mapfile -t rulesArray < <("$fractorPath" process --config="$fractorConfigPath" --dry-run --clear-cache --output-format=json \
+    | jq -r '.file_diffs[]?.applied_rules[]' \
     | sort \
     | uniq)
 
@@ -409,7 +384,7 @@ if [ "$numRules" -eq 0 ]; then
 fi
 
 ruleWord=$([ "$numRules" -eq 1 ] && echo "rule" || echo "rules")
-echo -e "${PURPLE}Rector wants to apply $numRules $ruleWord to the code${NC}"
+echo -e "${PURPLE}Fractor wants to apply $numRules $ruleWord to the code${NC}"
 
 ensure_messages_dir
 
@@ -452,7 +427,7 @@ for rule in "${rulesArray[@]}"; do
     printf "${YELLOW}Previewing rule: %s${NC}\n" "$rule"
 
     set +e
-    "$rectorPath" process --config "$rectorConfigPath" --dry-run --no-progress-bar --clear-cache --ansi --only="$rule"
+    "$fractorPath" process --config="$fractorConfigPath" --dry-run --clear-cache --ansi --only="$rule"
     dryRunStatus=$?
     set -e
 
@@ -469,7 +444,7 @@ for rule in "${rulesArray[@]}"; do
     printf "${YELLOW}Applying rule: %s${NC}\n" "$rule"
 
     # Process individual rule
-    "$rectorPath" process --config "$rectorConfigPath" --no-progress-bar --clear-cache --no-diffs --only="$rule"
+    "$fractorPath" process --config="$fractorConfigPath" --clear-cache --no-progress-bar --no-diffs --only="$rule"
 
     # Check if changes happened
     if git diff --quiet; then
@@ -477,12 +452,17 @@ for rule in "${rulesArray[@]}"; do
         continue
     fi
 
-    # Format code
-    if [ "$formatter" = "ecs" ]; then
-        "$formatterPath" --fix --config="$ecsConfigPath" --no-progress-bar --no-diffs
-    else
-        "$formatterPath" fix --config="$phpCsFixerConfigPath" --show-progress=none --quiet
-    fi
+	# Normalize composer.json files after modifications
+    git status --porcelain=v1 | \
+        grep 'composer\.json$' | \
+        awk '{print $2}' | \
+        while IFS= read -r file_path; do
+            composer normalize --no-check-lock --no-update-lock --no-scripts "$file_path"
+            if [ $? -ne 0 ]; then
+            	echo -e "\033[31mError after running composer normalize for file $file_path\033[0m" >&2
+                exit 1
+            fi
+        done
 
     # Build commit message
     messageFilePath=$(rule_to_filepath "$rule")
@@ -496,10 +476,10 @@ ${rule}
 EOF
 )
 
+    #git add --all -- . ":(exclude)$messagesDirName"
     git add .
     git commit \
         --all \
-        --author='Rector <rector@getrector.com>' \
         --message="$commitMessage" \
         --quiet
 
@@ -512,4 +492,4 @@ if ! restore_stash; then
 fi
 
 trap - EXIT
-print_success "Rector is done"
+print_success "Fractor is done"
