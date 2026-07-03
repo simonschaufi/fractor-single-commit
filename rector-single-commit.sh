@@ -476,7 +476,6 @@ ${rule}
 EOF
 )
 
-    #git add --all -- . ":(exclude)$messagesDirName"
     git add .
     git commit \
         --all \
