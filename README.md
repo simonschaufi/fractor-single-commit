@@ -35,7 +35,7 @@ If such a file does not exist, it will print the expected file name and stop pro
 ## Environment variables
 
 - `$FRACTOR_PATH` Use the path given in this variable instead of `vendor/bin/fractor`.
-- `RECTOR_CONFIG_PATH` Use the path to the rector config file given in this variable instead of `./fractor.php`.
+- `$FRACTOR_CONFIG_PATH` Use the path to the rector config file given in this variable instead of `./fractor.php`.
 
 ## Dependencies
 
