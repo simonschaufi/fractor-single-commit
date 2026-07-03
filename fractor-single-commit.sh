@@ -427,7 +427,7 @@ for rule in "${rulesArray[@]}"; do
     printf "${YELLOW}Previewing rule: %s${NC}\n" "$rule"
 
     set +e
-    "$fractorPath" process --config="$fractorConfigPath" --dry-run --clear-cache --ansi --only="$rule"
+    "$fractorPath" process --config="$fractorConfigPath" --dry-run --no-progress-bar --clear-cache --ansi --only="$rule"
     dryRunStatus=$?
     set -e
 
@@ -444,7 +444,7 @@ for rule in "${rulesArray[@]}"; do
     printf "${YELLOW}Applying rule: %s${NC}\n" "$rule"
 
     # Process individual rule
-    "$fractorPath" process --config="$fractorConfigPath" --clear-cache --no-progress-bar --no-diffs --only="$rule"
+    "$fractorPath" process --config="$fractorConfigPath" --no-progress-bar --clear-cache --no-diffs --only="$rule"
 
     # Check if changes happened
     if git diff --quiet; then
