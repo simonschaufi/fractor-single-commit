@@ -127,6 +127,8 @@ ensure_messages_dir() {
     local gitExcludeFile
 
     if [ -d "$messagesDir" ]; then
+		echo -e "${CYAN}Pulling latest commit messages...${NC}"
+		git -C "$messagesDir" pull --quiet
         return 0
     fi
 
@@ -391,11 +393,6 @@ ensure_messages_dir
 # Phase 1: Check all commit message files and prompt for missing ones
 echo ""
 echo -e "${CYAN}Phase 1: Checking commit message files...${NC}"
-
-if [ -d "$messagesDir" ]; then
-    echo -e "${CYAN}Pulling latest commit messages...${NC}"
-    git -C "$messagesDir" pull --quiet
-fi
 
 missingMessages=()
 for rule in "${rulesArray[@]}"; do
