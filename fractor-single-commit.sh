@@ -19,6 +19,7 @@ NC='\033[0m' # No Color
 
 dryRun=false
 commitMessagePrefix="[TASK] "
+newCommitMessagesCreated=false
 
 # Parse parameters
 while [[ $# -gt 0 ]]; do
@@ -216,6 +217,36 @@ prompt_for_commit_message() {
     # Write the commit message to file
     echo "$commitMessage" > "$messageFilePath"
     echo -e "${GREEN}Saved commit message to: $messageFilePath${NC}"
+    newCommitMessagesCreated=true
+}
+
+# Ask whether to commit newly created commit message files
+prompt_to_commit_messages() {
+    local answer
+
+    while true; do
+        echo ""
+        print " ${GREEN}Commit the new files now (y/n)${NC} [${YELLOW}Y${NC}]:\n > "
+        read -r answer
+
+        case "${answer,,}" in
+            ""|y|yes)
+                git -C "$messagesDir" add .
+                if [ -n "$(git -C "$messagesDir" status --porcelain)" ]; then
+                    git -C "$messagesDir" commit --message="Add new commit messages" --quiet
+                    git -C "$messagesDir" push --quiet
+                    echo -e "${GREEN}Committed new commit messages${NC}"
+                fi
+                return 0
+                ;;
+            n|no)
+                return 1
+                ;;
+            *)
+                echo -e "${YELLOW}Please press Enter or enter y or n${NC}"
+                ;;
+        esac
+    done
 }
 
 # Ask whether a rule should be applied after showing its dry-run output
@@ -410,6 +441,10 @@ if [ ${#missingMessages[@]} -gt 0 ]; then
         messageFilePath=$(rule_to_filepath "$rule")
         prompt_for_commit_message "$rule" "$messageFilePath"
     done
+
+    if [ "$newCommitMessagesCreated" = true ]; then
+        prompt_to_commit_messages
+    fi
 
     print_success "All commit messages collected"
 else
